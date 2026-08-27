@@ -14,7 +14,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onNavigate
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const { refreshProfile } = useAuth();
+  const { setDirectProfile } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,7 +36,7 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onNavigate
       });
 
       if (authError) {
-        console.error('Erreur Supabase Auth:', authError.message);
+        console.error('[Klaro Login] Erreur Supabase Auth:', authError.message);
         if (
           authError.message.includes('Invalid login credentials') ||
           authError.message.includes('invalid_credentials') ||
@@ -56,43 +56,68 @@ export const LoginView: React.FC<LoginViewProps> = ({ onLoginSuccess, onNavigate
         return;
       }
 
-      // 2. Récupération du profil dans la table 'profiles'
+      console.log('[Klaro Login] Utilisateur authentifié:', data.user.id, data.user.email);
+
+      // 2. Récupération du profil complet dans la table 'profiles'
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', data.user.id)
-        .single();
+        .maybeSingle();
+
+      console.log('[Klaro Login] Profil récupéré depuis Supabase profiles pour', data.user.id, ':', profileData, 'Erreur:', profileError);
 
       if (profileError) {
-        console.warn('Profil non trouvé immédiatement, utilisation des métadonnées :', profileError.message);
+        console.error('[Klaro Login] Erreur requête profiles:', profileError);
+        // Si une erreur RLS ou réseau se produit et qu'il n'y a pas de rôle dans les métadonnées
+        if (data.user.user_metadata?.role !== 'professeur') {
+          setError(`Erreur d'accès au profil (${profileError.message}). Veuillez réessayer.`);
+          setLoading(false);
+          return;
+        }
       }
 
-      const role = profileData?.role || 'apprenant';
+      if (!profileData && data.user.user_metadata?.role !== 'professeur') {
+        console.warn('[Klaro Login] Aucun profil trouvé dans la table profiles.');
+        setError('Profil utilisateur introuvable dans la base de données. Veuillez réessayer.');
+        setLoading(false);
+        return;
+      }
+
+      // 3. Détermination stricte du rôle
+      const rawRole = String(profileData?.role || data.user.user_metadata?.role || 'apprenant').trim().toLowerCase();
+      const resolvedRole = rawRole === 'professeur' ? 'professeur' : 'apprenant';
+
+      console.log('[Klaro Login] Rôle résolu pour la session:', resolvedRole);
+
       const userProfile: UserProfile = {
         id: data.user.id,
         nom: profileData?.nom || data.user.user_metadata?.nom || '',
         prenom: profileData?.prenom || data.user.user_metadata?.prenom || '',
         email: cleanEmail,
-        role: role,
-        credits: Number(profileData?.credits ?? 20),
+        role: resolvedRole,
+        credits: Number(profileData?.credits ?? (resolvedRole === 'professeur' ? 100 : 20)),
         profil_complete: Boolean(profileData?.profil_complete),
         avatar: `${(profileData?.prenom || data.user.user_metadata?.prenom || 'U')[0] || ''}${(profileData?.nom || data.user.user_metadata?.nom || '')[0] || ''}`.toUpperCase() || 'U',
       };
 
-      await refreshProfile();
+      // Mettre à jour l'état AuthContext directement pour éviter tout délai de propagation
+      setDirectProfile(userProfile);
 
       if (onLoginSuccess) {
         onLoginSuccess(userProfile);
       }
 
-      // 3. Redirection selon le rôle
-      if (role === 'professeur') {
+      // 4. Redirection selon le rôle réel
+      if (resolvedRole === 'professeur') {
+        console.log('[Klaro Login] Redirection vers /dashboard-professeur');
         onNavigate('dashboard-professeur');
       } else {
+        console.log('[Klaro Login] Redirection vers /dashboard (apprenant)');
         onNavigate('dashboard');
       }
     } catch (err: any) {
-      console.error('Erreur inattendue de connexion:', err);
+      console.error('[Klaro Login] Erreur inattendue de connexion:', err);
       setError('Une erreur est survenue lors de la tentative de connexion. Veuillez réessayer.');
     } finally {
       setLoading(false);
