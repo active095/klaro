@@ -1,0 +1,6 @@
+{
+  "name": "Klaro",
+  "description": "Plateforme de quiz adaptatifs par IA pour l'Afrique francophone avec espaces Étudiant et Professeur.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

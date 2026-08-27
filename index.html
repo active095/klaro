@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Klaro — Quiz adaptatif IA</title>
+    <meta name="description" content="Plateforme de quiz adaptatifs propulsée par l'IA pour l'excellence académique." />
+    <meta property="og:title" content="Klaro — Quiz adaptatif IA" />
+    <meta property="og:description" content="Plateforme de quiz adaptatifs propulsée par l'IA pour l'excellence académique." />
+    <meta property="og:type" content="website" />
+    <script>
+      // Safe guard against libraries/polyfills attempting to assign to window.fetch when it has only a getter
+      (function() {
+        try {
+          var originalFetch = window.fetch ? window.fetch.bind(window) : undefined;
+          var currentFetch = originalFetch;
+          try {
+            Object.defineProperty(window, 'fetch', {
+              get: function() { return currentFetch; },
+              set: function(fn) { currentFetch = fn; },
+              configurable: true,
+              enumerable: true
+            });
+          } catch (e1) {
+            try {
+              var proto = Object.getPrototypeOf(window);
+              if (proto) {
+                Object.defineProperty(proto, 'fetch', {
+                  get: function() { return currentFetch; },
+                  set: function(fn) { currentFetch = fn; },
+                  configurable: true,
+                  enumerable: true
+                });
+              }
+            } catch (e2) {}
+          }
+        } catch (err) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+
